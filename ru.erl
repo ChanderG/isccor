@@ -11,10 +11,11 @@
 
 %% Read Uncommitted Concurrency Control
 
-%% In this module, we will model the "Read Uncommitted" technique.
+%% In this module, we will (kinda) model the "Read Uncommitted" technique.
 %% To be clear, this is more of a "lack of technique" than anything else.
 %% We simply run the input commands in order, not caring for protecting anything.
-%% As such, we do not have to even think about transactions.
+%% As such, we do not have to even think about transactions. So here,
+%% we will not really deal with aborts.
 
 % actual transaction manager code.
 rutm(Name, KVStore) ->
@@ -84,7 +85,9 @@ main_test_() ->
       fun tm:tx_2_test/0,
       fun tm:tx_3_test/0,
       fun tm:tx_4_test/0,
+      % we cannot really do abort here, can we?
+      % fun tm:tx_5_test/0,
       % test for concurrency anomalies
-      fun tm:tx_con_0_test/0
+      fun tm:tx_con_ru_test/0
       %% fun tm:g0_test/0
      ]}.

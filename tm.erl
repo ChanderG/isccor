@@ -91,8 +91,7 @@ read_write_1_test() ->
 
 % First for any transaction, we need to be able to begin it and the
 % after a sequence of commands, we need to be able to commit or
-% rollback it. This is the "Atomic" part of ACID. We will not worry
-% about rollback for now.
+% rollback it. This is the "Atomic" part of ACID.
 
 % Begin a tx. Respond with a bool ack of being able to start
 % a new tx or not.
@@ -116,6 +115,12 @@ commit_tx(Tm, Txid) ->
     Tm ! {committx, self(), Txid},
     receive
         {committxresp, Tm, Status} -> Status
+    end.
+
+abort_tx(Tm, Txid) ->
+    Tm ! {aborttx, self(), Txid},
+    receive
+        {aborttxresp, Tm, Status} -> Status
     end.
 
 tx_0_test() ->
@@ -163,6 +168,7 @@ tx_3_test() ->
      ?assert(commit_tx(tm, txid1))
     ].
 
+% 2 consecutive tx
 tx_4_test() ->
     [
      ?assert(begin_tx(tm, txid1)),
@@ -174,6 +180,22 @@ tx_4_test() ->
      ?assertEqual("there", read(tm, txid2, a)),
      ?assert(commit_tx(tm, txid2))
     ].
+
+% simple abort test
+tx_5_test() ->
+    [
+     % initial value of foo
+     write(tm, a, "foo"),
+     ?assertEqual("foo", read(tm, a)),
+     % tx updates value
+     ?assert(begin_tx(tm, txid1)),
+     write(tm, txid1, a, "hello"),
+     ?assertEqual("hello", read(tm, txid1, a)),
+     % however tx aborts
+     ?assert(abort_tx(tm, txid1)),
+     ?assertEqual("foo", read(tm, a))
+    ].
+
 
 % So far, nothing much. All of this is trivial right?
 
@@ -190,7 +212,7 @@ tx_4_test() ->
 % Read Uncommitted test. Check if we are able to read uncommitted
 % values of other txs.
 
-tx_con_0_test() ->
+tx_con_ru_test() ->
     [
      ?assert(begin_tx(tm, t1)),
      ?assert(begin_tx(tm, t2)),

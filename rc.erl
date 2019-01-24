@@ -37,7 +37,10 @@ rctm(State) ->
             rctm(write(State, Sender, Txid, Key, Value));
         % commit tx
         {committx, Sender, Txid} ->
-            rctm(commit(State, Sender, Txid))
+            rctm(commit(State, Sender, Txid));
+        % abort tx
+        {aborttx, Sender, Txid} ->
+            rctm(abort(State, Sender, Txid))
     end,
     rctm(State).
 
@@ -113,6 +116,20 @@ commit(State, Sender, Txid) ->
     Sender ! {committxresp, State#state.name, true},
     State#state{store=NewStore, pending=NewPending}.
 
+% Abort an ongoing tx.
+% Algo:
+% 1. Remove any entries of ours in the waiting array
+%    (we don't need them anymore)
+% 2. Remove any pending entries under our txid.
+% 3. Signal sender of successful abort.
+% 4. Trigger any commands waiting on us in the waiting array
+abort(State, Sender, Txid) ->
+    % 2. Clean our pending
+    NewPending = orddict:erase(Txid, State#state.pending),
+    % 3
+    Sender ! {aborttxresp, State#state.name, true},
+    State#state{pending=NewPending}.
+
 % This starts a new transaction manager process used for subsequent operation.
 % SOLVEME
 start_tm(UniqueId) ->
@@ -143,4 +160,7 @@ main_test_() ->
       fun tm:tx_2_test/0,
       fun tm:tx_3_test/0,
       fun tm:tx_4_test/0,
+      fun tm:tx_5_test/0,
+      % isolation
+      fun tm:g0_test/0
      ]}.

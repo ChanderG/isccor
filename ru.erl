@@ -82,7 +82,9 @@ main_test_() ->
       fun tm:tx_0_test/0,
       fun tm:tx_1_test/0,
       fun tm:tx_2_test/0,
-      fun tm:tx_3_test/0
+      fun tm:tx_3_test/0,
+      fun tm:tx_4_test/0,
       % test for concurrency anomalies
+      fun tm:tx_con_0_test/0
       %% fun tm:g0_test/0
      ]}.

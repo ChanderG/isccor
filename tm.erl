@@ -146,7 +146,24 @@ write(Tm, Txid, Key, Value) ->
     timer:sleep(10).
 
 % Let's test our new transaction semantics.
+% read only tx
 tx_2_test() ->
+    [
+     ?assert(begin_tx(tm, txid1)),
+     ?assertEqual(invalid, read(tm, txid1, a)),
+     ?assert(commit_tx(tm, txid1))
+    ].
+
+% read write tx
+tx_3_test() ->
+    [
+     ?assert(begin_tx(tm, txid1)),
+     write(tm, txid1, "a", "hello"),
+     ?assertEqual("hello", read(tm, txid1, "a")),
+     ?assert(commit_tx(tm, txid1))
+    ].
+
+tx_4_test() ->
     [
      ?assert(begin_tx(tm, txid1)),
      write(tm, txid1, a, "hello"),
@@ -173,7 +190,7 @@ tx_2_test() ->
 % Read Uncommitted test. Check if we are able to read uncommitted
 % values of other txs.
 
-tx_3_test() ->
+tx_con_0_test() ->
     [
      ?assert(begin_tx(tm, t1)),
      ?assert(begin_tx(tm, t2)),

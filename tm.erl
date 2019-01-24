@@ -19,8 +19,8 @@ cleanup(_) ->
     exit(whereis(tm),kill),
     timer:sleep(10). % give it a little time to die
 
-start_tm_test_() ->
-    ?_test(?assert(whereis(tm) =/= undefined)).
+start_tm_test() ->
+    ?assert(whereis(tm) =/= undefined).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Stage 2: Simple reads and writes
@@ -51,27 +51,25 @@ write(Tm, Key, Value) ->
         {writeresp, Tm} -> true
     end.
 
-invalid_read_test_() ->
-    ?_test(?assertEqual(invalid, read(tm, a))).
+invalid_read_test() ->
+    ?assertEqual(invalid, read(tm, a)).
 
-read_write_0_test_() ->
-    ?_test([
-            ?assertEqual(invalid, read(tm, a)),
-            write(tm, a, "hello"),
-            ?assertEqual("hello", read(tm, a))
-           ]).
+read_write_0_test() ->
+    [
+     ?assertEqual(invalid, read(tm, a)),
+     write(tm, a, "hello"),
+     ?assertEqual("hello", read(tm, a))
+    ].
 
 % test multiple writes to the same key
-read_write_1_test_() ->
-    ?_test([
-            ?assertEqual(invalid, read(tm, a)),
-            write(tm, a, "hello"),
-            ?assertEqual("hello", read(tm, a)),
-            write(tm, a, "bye"),
-            write(tm, b, "there"),
-            ?assertEqual("bye", read(tm, a)),
-            ?assertEqual("there", read(tm, b))
-           ]).
+read_write_1_test() ->
+    [?assertEqual(invalid, read(tm, a)),
+     write(tm, a, "hello"),
+     ?assertEqual("hello", read(tm, a)),
+     write(tm, a, "bye"),
+     write(tm, b, "there"),
+     ?assertEqual("bye", read(tm, a)),
+     ?assertEqual("there", read(tm, b))].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Stage 3: Transactions (serially)
@@ -120,19 +118,15 @@ commit_tx(Tm, Txid) ->
         {committxresp, Tm, Status} -> Status
     end.
 
-tx_0_test_() ->
-    ?_test([
-            ?assert(begin_tx(tm, txid1)),
-            ?assert(commit_tx(tm, txid1))
-           ]).
+tx_0_test() ->
+    [?assert(begin_tx(tm, txid1)),
+     ?assert(commit_tx(tm, txid1))].
 
 % look at that!!!, we are able to commit a non-existing tx
 % never mind, this is not of importance for this objective
 % just leaving this here to show how incomplete our simulation is
-tx_1_test_() ->
-    ?_test([
-            ?assert(commit_tx(tm, txid2))
-           ]).
+tx_1_test() ->
+    ?assert(commit_tx(tm, txid2)).
 
 % Updated version of read and write above, now also passing in the
 % txid.
@@ -148,17 +142,17 @@ write(Tm, Txid, Key, Value) ->
     write(Tm, Key, Value).
 
 % Let's test our new transaction semantics.
-tx_2_test_() ->
-    ?_test([
-            ?assert(begin_tx(tm, txid1)),
-            write(tm, txid1, a, "hello"),
-            ?assertEqual("hello", read(tm, txid1, a)),
-            ?assert(commit_tx(tm, txid1)),
-            ?assert(begin_tx(tm, txid2)),
-            write(tm, txid2, a, "there"),
-            ?assertEqual("there", read(tm, txid2, a)),
-            ?assert(commit_tx(tm, txid2))
-           ]).
+tx_2_test() ->
+    [
+     ?assert(begin_tx(tm, txid1)),
+     write(tm, txid1, a, "hello"),
+     ?assertEqual("hello", read(tm, txid1, a)),
+     ?assert(commit_tx(tm, txid1)),
+     ?assert(begin_tx(tm, txid2)),
+     write(tm, txid2, a, "there"),
+     ?assertEqual("there", read(tm, txid2, a)),
+     ?assert(commit_tx(tm, txid2))
+    ].
 
 % So far, nothing much. All of this is trivial right?
 
@@ -175,33 +169,33 @@ tx_2_test_() ->
 % Read Uncommitted test. Check if we are able to read uncommitted
 % values of other txs.
 
-tx_3_test_() ->
-    ?_test([
-            ?assert(begin_tx(tm, t1)),
-            ?assert(begin_tx(tm, t2)),
-            ?assertEqual(invalid, read(tm, t1, a)),
-            write(tm, t1, a, "hello"),
-            ?assertEqual("hello", read(tm, t1, a)),
-            ?assertEqual("hello", read(tm, t2, a)),
-            write(tm, t2, a, "there"),
-            ?assertEqual("there", read(tm, t2, a)),
-            ?assert(commit_tx(tm, t1)),
-            ?assert(commit_tx(tm, t2))
-           ]).
+tx_3_test() ->
+    [
+     ?assert(begin_tx(tm, t1)),
+     ?assert(begin_tx(tm, t2)),
+     ?assertEqual(invalid, read(tm, t1, a)),
+     write(tm, t1, a, "hello"),
+     ?assertEqual("hello", read(tm, t1, a)),
+     ?assertEqual("hello", read(tm, t2, a)),
+     write(tm, t2, a, "there"),
+     ?assertEqual("there", read(tm, t2, a)),
+     ?assert(commit_tx(tm, t1)),
+     ?assert(commit_tx(tm, t2))
+    ].
 
 %% G0: Write Cycles.
 
-g0_test_() ->
-    ?_test([
-            ?assert(begin_tx(tm, t1)),
-            write(tm, t1, 1, 11),
-            write(tm, t2, 1, 12),
-            write(tm, t1, 2, 21),
-            ?assert(commit_tx(tm, t1)),
-            ?assertEqual(11, read(tm, 1)),
-            ?assertEqual(21, read(tm, 2)),
-            write(tm, t2, 2, 22),
-            ?assert(commit_tx(tm, t2)),
-            ?assertEqual(12, read(tm, 1)),
-            ?assertEqual(22, read(tm, 2))
-           ]).
+g0_test() ->
+    [
+     ?assert(begin_tx(tm, t1)),
+     write(tm, t1, 1, 11),
+     write(tm, t2, 1, 12),
+     write(tm, t1, 2, 21),
+     ?assert(commit_tx(tm, t1)),
+     ?assertEqual(11, read(tm, 1)),
+     ?assertEqual(21, read(tm, 2)),
+     write(tm, t2, 2, 22),
+     ?assert(commit_tx(tm, t2)),
+     ?assertEqual(12, read(tm, 1)),
+     ?assertEqual(22, read(tm, 2))
+    ].

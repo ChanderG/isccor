@@ -63,16 +63,16 @@ main_test_() ->
      fun tm:cleanup/1,
      [
       % to ensure tm starts
-      fun tm:start_tm_test_/0,
+      fun tm:start_tm_test/0,
       % test reads/writes
-      fun tm:invalid_read_test_/0,
-      fun tm:read_write_0_test_/0,
-      fun tm:read_write_1_test_/0,
+      fun tm:invalid_read_test/0,
+      fun tm:read_write_0_test/0,
+      fun tm:read_write_1_test/0,
       % test single txs
-      fun tm:tx_0_test_/0,
-      fun tm:tx_1_test_/0,
-      fun tm:tx_2_test_/0,
-      fun tm:tx_3_test_/0
+      fun tm:tx_0_test/0,
+      fun tm:tx_1_test/0,
+      fun tm:tx_2_test/0,
+      fun tm:tx_3_test/0
       % test for concurrency anomalies
-      %% fun tm:g0_test_/0
+      %% fun tm:g0_test/0
      ]}.

@@ -130,16 +130,20 @@ tx_1_test() ->
 
 % Updated version of read and write above, now also passing in the
 % txid.
-% HINT: From what we know of Read Uncommited so far, does the
-% Txid really matter?
 
 % SOLVEME
 read(Tm, Txid, Key) ->
-    read(Tm, Key).
+    Tm ! {read, self(), Txid, Key},
+    receive
+        {readresp, Tm, Value} -> Value
+    end.
 
+% Note: the Tx of write is non blocking, as the actual write may be
+% blocking.
 % SOLVEME
 write(Tm, Txid, Key, Value) ->
-    write(Tm, Key, Value).
+    Tm ! {write, self(), Txid, Key, Value},
+    timer:sleep(10).
 
 % Let's test our new transaction semantics.
 tx_2_test() ->

@@ -21,25 +21,35 @@ rutm(Name, KVStore) ->
     receive
         % single read
         {read, Sender, Key} ->
-            Value = case orddict:is_key(Key, KVStore) of
-                        true -> orddict:fetch(Key, KVStore);
-                        false -> invalid
-                    end,
-            Sender ! {readresp, Name, Value};
+            rutm_read(Name, KVStore, Sender, Key);
         % single write
         {write, Sender, Key, Value} ->
-            NewKVStore = orddict:store(Key, Value, KVStore),
-            Sender ! {writeresp, Name},
-            rutm(Name, NewKVStore);
+            rutm(Name, rutm_write(Name, KVStore, Sender, Key, Value));
         {begintx, Sender, _} ->
             % We simply start all txs.
             Sender ! {begintxresp, Name, true};
         {committx, Sender, _} ->
             % We simply finish up. This is read uncommitted;
             % so as such tx changes are not isolated...
-            Sender ! {committxresp, Name, true}
+            Sender ! {committxresp, Name, true};
+        {read, Sender, Txid, Key} ->
+            rutm_read(Name, KVStore, Sender, Key);
+        {write, Sender, Txid, Key, Value} ->
+            rutm(Name, rutm_write(Name, KVStore, Sender, Key, Value))
     end,
     rutm(Name, KVStore).
+
+rutm_read(Name, KVStore, Sender, Key) ->
+    Value = case orddict:is_key(Key, KVStore) of
+                true -> orddict:fetch(Key, KVStore);
+                false -> invalid
+            end,
+    Sender ! {readresp, Name, Value}.
+
+rutm_write(Name, KVStore, Sender, Key, Value) ->
+    NewKVStore = orddict:store(Key, Value, KVStore),
+    Sender ! {writeresp, Name},
+    NewKVStore.
 
 %% Now to run all tests, uses ru:test(). Add tests from tm.erl to the
 %% list below as needed.

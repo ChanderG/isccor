@@ -227,7 +227,6 @@ tx_con_ru_test() ->
     ].
 
 %% G0: Write Cycles.
-
 g0_test() ->
     [
      ?assert(begin_tx(tm, t1)),
@@ -241,4 +240,46 @@ g0_test() ->
      ?assert(commit_tx(tm, t2)),
      ?assertEqual(12, read(tm, 1)),
      ?assertEqual(22, read(tm, 2))
+    ].
+
+% G1a: Aborted Reads.
+g1a_test() ->
+    [
+     write(tm, 1, 10),
+     ?assert(begin_tx(tm, t1)),
+     ?assert(begin_tx(tm, t2)),
+     write(tm, t1, 1, 101),
+     ?assertEqual(10, read(tm, t2, 1)),
+     ?assert(abort_tx(tm, t1)),
+     ?assertEqual(10, read(tm, t2, 1)),
+     ?assert(commit_tx(tm, t2))
+    ].
+
+%G1b: Intermediate Reads
+g1b_test() ->
+    [
+     write(tm, 1, 10),
+     ?assert(begin_tx(tm, t1)),
+     ?assert(begin_tx(tm, t2)),
+     write(tm, t1, 1, 101),
+     ?assertEqual(10, read(tm, t2, 1)),
+     write(tm, t1, 1, 11),
+     ?assert(commit_tx(tm, t1)),
+     ?assertEqual(11, read(tm, t2, 1)),
+     ?assert(commit_tx(tm, t2))
+    ].
+
+%G1c: Circular Information Flow
+g1c_test() ->
+    [
+     write(tm, 1, 10),
+     write(tm, 2, 20),
+     ?assert(begin_tx(tm, t1)),
+     ?assert(begin_tx(tm, t2)),
+     write(tm, t1, 1, 11),
+     write(tm, t2, 2, 22),
+     ?assertEqual(20, read(tm, t1, 2)),
+     ?assertEqual(10, read(tm, t2, 1)),
+     ?assert(commit_tx(tm, t1)),
+     ?assert(commit_tx(tm, t2))
     ].

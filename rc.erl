@@ -65,7 +65,10 @@ read(State, Sender, Txid, Key) ->
     % check if our txid has any modifications
     Value = case orddict:is_key(Txid, State#state.pending) of
                 false -> get_value_or_invalid(State#state.store, Key);
-                true -> element(2, lists:keyfind(Key, 1, orddict:fetch(Txid, State#state.pending)))
+                true -> case lists:keyfind(Key, 1, orddict:fetch(Txid, State#state.pending)) of
+                            false -> get_value_or_invalid(State#state.store, Key);
+                            {Key, Val} -> Val
+                        end
             end,
     Sender ! {readresp, State#state.name, Value}.
 
@@ -162,5 +165,8 @@ main_test_() ->
       fun tm:tx_4_test/0,
       fun tm:tx_5_test/0,
       % isolation
-      fun tm:g0_test/0
+      fun tm:g0_test/0,
+      fun tm:g1a_test/0,
+      fun tm:g1b_test/0,
+      fun tm:g1c_test/0
      ]}.

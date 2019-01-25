@@ -245,6 +245,7 @@ tx_con_non_rr_test() ->
 g0_test() ->
     [
      ?assert(begin_tx(tm, t1)),
+     ?assert(begin_tx(tm, t2)),
      write(tm, t1, 1, 11),
      write(tm, t2, 1, 12),
      write(tm, t1, 2, 21),

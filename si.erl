@@ -2,6 +2,13 @@
 -export([sitm/1]).
 -include_lib("eunit/include/eunit.hrl").
 
+-record(state, {
+                name,
+                store,
+                snapshots,
+                writereadsets
+               }).
+
 %% Snapshot Isolation
 
 % We will attempt Snapshot Isolation using MVCC, that is holding
@@ -152,7 +159,12 @@ can_merge(Global, WriteReadset) ->
                               end, WriteReadset),
     orddict:is_empty(Mismatch).
 
-can_merge_test() ->
+can_merge_0_test() ->
+    Global = orddict:new(),
+    Global1 = orddict:store(a, 1, Global),
+    ?assert(can_merge(Global1, orddict:new())).
+
+can_merge_1_test() ->
     Global = orddict:new(),
     Global1 = orddict:store(a, 1, Global),
     Snapshot1 = create_snapshot(Global1),
@@ -171,4 +183,113 @@ can_merge_test() ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 sitm(State) ->
+    Name = State#state.name,
+    receive
+        % simple reads and writes
+        {read, Sender, Key} ->
+            Sender ! {readresp, Name, read_snapshot(State#state.store, Key)};
+        {write, Sender, Key, Value} ->
+            Sender ! {writeresp, Name},
+            sitm(State#state{store=orddict:store(Key, Value, State#state.store)});
+        % Tx semantics
+        {begintx, Sender, Txid} ->
+            sitm(begin_tx(State, Sender, Txid));
+        {read, Sender, Txid, Key} ->
+            read(State, Sender, Txid, Key);
+        {write, Sender, Txid, Key, Value} ->
+            sitm(write(State, Sender, Txid, Key, Value));
+        {committx, Sender, Txid} ->
+            sitm(commit_tx(State, Sender, Txid));
+        {aborttx, Sender, Txid} ->
+            sitm(abort_tx(State, Sender, Txid))
+    end,
     sitm(State).
+
+% Begin a tx.
+begin_tx(State, Sender, Txid) ->
+    Sender ! {begintxresp, State#state.name, true},
+    CurrSnapshots = State#state.snapshots,
+    CurrWRSets = State#state.writereadsets,
+    State#state{
+      snapshots=orddict:store(Txid, create_snapshot(State#state.store), CurrSnapshots),
+      writereadsets=orddict:store(Txid, orddict:new(), CurrWRSets)
+    }.
+
+% Read (command in a tx)
+read(State, Sender, Txid, Key) ->
+    Sender ! {readresp, State#state.name, read_snapshot(orddict:fetch(Txid, State#state.snapshots), Key)}.
+
+% Write (command in a tx)
+write(State, _, Txid, Key, Value) ->
+    {NewSnapshot, NewWRSet} = write_snapshot(
+                                orddict:fetch(Txid, State#state.snapshots),
+                                orddict:fetch(Txid, State#state.writereadsets),
+                                Key,
+                                Value),
+    State#state{
+      snapshots=orddict:store(Txid, NewSnapshot, State#state.snapshots),
+      writereadsets=orddict:store(Txid, NewWRSet, State#state.writereadsets)
+     }.
+
+% Commit a tx.
+% 1. Check if we can_merge this snapshot back to store.
+%    If so, merge the snapshot, send true to client.
+% 2. If not, send false to the client.
+% 3. Clean out the snapshots and writereadsets of this Tx's entries.
+commit_tx(State, Sender, Txid) ->
+    {UpdatedStore, Status} = case can_merge(State#state.store, orddict:fetch(Txid, State#state.writereadsets)) of
+                                 true ->
+                                     {merge(State#state.store, orddict:fetch(Txid, State#state.snapshots)), true};
+                                 false ->
+                                     {State#state.store, false}
+                             end,
+    Sender ! {committxresp, State#state.name, Status},
+    UpdatedSnapshots = orddict:erase(Txid, State#state.snapshots),
+    UpdatedWRSets = orddict:erase(Txid, State#state.writereadsets),
+    State#state{store=UpdatedStore, snapshots=UpdatedSnapshots, writereadsets=UpdatedWRSets}.
+
+% Simply drop the snapshots
+abort_tx(State, Sender, Txid) ->
+    Sender ! {aborttxresp, State#state.name, true},
+    UpdatedSnapshots = orddict:erase(Txid, State#state.snapshots),
+    UpdatedWRSets = orddict:erase(Txid, State#state.writereadsets),
+    State#state{snapshots=UpdatedSnapshots, writereadsets=UpdatedWRSets}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TM Tests
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This starts a new transaction manager process used for subsequent operation.
+% SOLVEME
+start_tm(UniqueId) ->
+    register(UniqueId, spawn(si, sitm, [#state{name=UniqueId, store=orddict:new(), snapshots=orddict:new(), writereadsets=orddict:new()}])).
+
+%% Test setup
+setup() ->
+    start_tm(tm).
+
+%% Teardown is common to all options.
+
+main_test_() ->
+    {foreach,
+     fun setup/0,
+     fun tm:cleanup/1,
+     [
+      fun tm:start_tm_test/0,
+      % test reads/writes,
+      fun tm:invalid_read_test/0,
+      fun tm:read_write_0_test/0,
+      fun tm:read_write_1_test/0,
+      % simple tx tests
+      fun tm:tx_0_test/0,
+      fun tm:tx_2_test/0,
+      fun tm:tx_3_test/0,
+      fun tm:tx_4_test/0,
+      fun tm:tx_5_test/0,
+      % test for anomalies
+      %% fun tm:g0_test/0,
+      %% fun tm:g1a_test/0,
+      %% fun tm:g1b_test/0,
+      %% fun tm:g1c_test/0
+      %% fun tm:g_single_test()
+     ]}.

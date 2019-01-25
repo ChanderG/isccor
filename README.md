@@ -1,7 +1,8 @@
+# isccor
+
+This is an attempt to understand and teach the common concurrency controls and the levels of isolation they provide in context of Transaction Processing in a semi-practical manner by coding up simplified versions akin to a simulation.
 
 ## Background
-
-This is an attempt to understand and teach the common concurrency controls and the levels of isolation they provide in context of Transaction Processing in a semi-practical manner by coding up simulations of them.
 
 In the Database parlance, ACID is the set of properties that the DBMS guarantees of transactions. Among those, the one we are focussed on here is `I', Isolation. Isolation means that transactions do not see each others affects. As such, we want to code simplified versions of the isolation related functionality of Transaction Processors or Managers (hereby referred to as TM throughout).
 
@@ -41,6 +42,15 @@ We will model a TM in Erlang and try to implement low-fidelity versions / simula
 
 + We are not concerned about the performance aspects of any of these protocols. We simply want to see how each protocol handles the different CAs.
 + We are not doing anything realistic. Remember, we are only interested in the 'I' components of 'ACID' and without the other 3, the TMs are not real transaction processors.
+
+### Plan
+
+The following is the planned sequence of protocols we will consider:
+
+1. Read Uncommitted - simple, weak protocol to introduce the setup
+2. Monotonic Atomic View - commonly called Read Committed (TODO: need to understand the exact scientific spec of MAV)
+
+Remaining: SI, SSI, TSO, S2PL
 
 ## References
 

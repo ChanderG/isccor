@@ -10,9 +10,10 @@
                 waiting % a set of pending write operations (because of blocking of other txs) each marked with the actual txid of the blocker
                }).
 
-%% Read Committed.
+%% Read Committed or Monotonic Atomic View
+% (TODO: Need to understand MAV and clearly update the protocol. As such a lot of this is in common with SI).
 
-%% While the generic public name of this isolation protocol is Read Committed, it is not clear from the name what exactly has to be done.
+%% While the generic public name of this isolation protocol is Read Committed, it is not clear from the name what exactly has to be done. Read Committed is a reference to one of the properties that this provides.
 
 %% What has to be done is this:
 % Reads should only read committed data (and changes made in our own transaction)

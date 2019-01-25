@@ -164,9 +164,17 @@ main_test_() ->
       fun tm:tx_3_test/0,
       fun tm:tx_4_test/0,
       fun tm:tx_5_test/0,
-      % isolation
+      % isolation - general
+      fun tm:tx_con_non_rr_test/0,
+      % isolation - specific
+      % basic requirements for rc
       fun tm:g0_test/0,
       fun tm:g1a_test/0,
       fun tm:g1b_test/0,
-      fun tm:g1c_test/0
+      fun tm:g1c_test/0,
+      % extra
+      fun tm:otv_test/0,
+      % these tests should fail
+      % fun tm:p4_test/0
+      % fun tm:g_single_test/0
      ]}.

@@ -226,6 +226,21 @@ tx_con_ru_test() ->
      ?assert(commit_tx(tm, t2))
     ].
 
+%% Non-Repeatable reads
+tx_con_non_rr_test() ->
+    [
+     write(tm , 1, 10),
+     ?assert(begin_tx(tm, t1)),
+     ?assert(begin_tx(tm, t2)),
+     ?assertEqual(10, read(tm, t1, 1)),
+     write(tm, t2, 1, 11),
+     ?assert(commit_tx(tm, t2)),
+     ?assertEqual(11, read(tm, t1, 1)), % t1 is doing a non-repeatable read
+     ?assert(commit_tx(tm, t1))
+    ].
+
+%% Advanced: the studied anomalies
+
 %% G0: Write Cycles.
 g0_test() ->
     [
@@ -283,3 +298,60 @@ g1c_test() ->
      ?assert(commit_tx(tm, t1)),
      ?assert(commit_tx(tm, t2))
     ].
+
+% OTV: Observed Transaction Vanishes
+
+otv_test() ->
+    [
+     begin_tx(tm, t1),
+     begin_tx(tm, t2),
+     begin_tx(tm, t3),
+     write(tm, t1, 1, 11),
+     write(tm, t1, 2, 19),
+     write(tm, t2, 1, 12),
+     ?assert(commit_tx(tm, t1)),
+     ?assertEqual(11, read(tm, t3, 1)),
+     write(tm, t2, 2, 18),
+     ?assertEqual(19, read(tm, t3, 2)),
+     ?assert(commit_tx(tm, t2)),
+     ?assertEqual(18, read(tm, t3, 2)),
+     ?assertEqual(12, read(tm, t3, 1)),
+     ?assert(commit_tx(tm, t3))
+    ].
+
+% P4: Lost Update
+
+p4_test() ->
+    [
+     write(tm, 1, 10),
+     begin_tx(tm, t1),
+     begin_tx(tm, t2),
+     ?assertEqual(10, read(tm, t1, 1)),
+     ?assertEqual(10, read(tm, t2, 1)),
+     write(tm, t1, 1, 11),
+     write(tm, t2, 1, 11),
+     ?assert(commit_tx(tm, t1)),
+     ?assertNot(commit_tx(tm, t2))
+    ].
+
+% G-single: Read Skew
+
+g_single_test() ->
+    [
+     write(tm, 1, 10),
+     write(tm, 2, 20),
+     begin_tx(tm, t1),
+     begin_tx(tm, t2),
+     ?assertEqual(10, read(tm, t1, 1)),
+     ?assertEqual(10, read(tm, t2, 1)),
+     ?assertEqual(20, read(tm, t2, 2)),
+     write(tm, t2, 1, 12),
+     write(tm, t2, 2, 18),
+     commit_tx(tm, t2),
+     ?assertEqual(20, read(tm, t1, 2)),
+     commit_tx(tm, t1)
+    ].
+
+% G2-item: Write Skew
+% G2: Anti Dependency Cycle
+% PMP: Predicate Many Preceders

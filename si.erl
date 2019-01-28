@@ -287,9 +287,15 @@ main_test_() ->
       fun tm:tx_4_test/0,
       fun tm:tx_5_test/0,
       % test for anomalies
+      % NA as w-w conflicts are neutralized
       %% fun tm:g0_test/0,
-      %% fun tm:g1a_test/0,
+      fun tm:g1a_test/0,
+      % NA as we are completetely isolated from other txs
       %% fun tm:g1b_test/0,
-      %% fun tm:g1c_test/0
-      %% fun tm:g_single_test()
+      fun tm:g1c_test/0,
+      % NA as we don't observe other txs in the first place
+      %% fun tm:otv_tst/0,
+      fun tm:p4_test/0,
+      fun tm:g_single_test/0,
+      fun tm:start_tm_test/0
      ]}.

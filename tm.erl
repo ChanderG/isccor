@@ -353,6 +353,39 @@ g_single_test() ->
      commit_tx(tm, t1)
     ].
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Stage 5: Advanced Queries
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% For the remaining anomalies, it seems that we can truly illustrate the effect only in case of richer queries such as range etc.
+
+%% Instead we provide a simple analogous api to help test such queries in kv stores.
+
+%% Write Where Value Equals
+% In this special query, we allow the tx to update multiple keys to a
+% single value, where the keys are chosen based on the existing values
+% stored.
+% Roughly equal to the relational:
+% >>> update values in table where value = x;
+
+write_where_value(Tm, Txid, OldValue, NewValue) ->
+    Tm ! {writewv, self(), Txid, OldValue, NewValue},
+    timer:sleep(10).
+
 % G2-item: Write Skew
+
+g2_item_test() ->
+    [
+     write(tm, 1, black),
+     write(tm, 2, white),
+     ?assert(begin_tx(tm, t1)),
+     ?assert(begin_tx(tm, t2)),
+     write_where_value(tm, t1, black, white),
+     write_where_value(tm, t2, white, black),
+     ?assert(commit_tx(tm, t1)),
+     % because, if this tx also commits, the tx is not serializable
+     ?assertNot(commit_tx(tm, t2))
+    ].
+
 % G2: Anti Dependency Cycle
 % PMP: Predicate Many Preceders

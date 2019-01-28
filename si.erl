@@ -201,7 +201,9 @@ sitm(State) ->
         {committx, Sender, Txid} ->
             sitm(commit_tx(State, Sender, Txid));
         {aborttx, Sender, Txid} ->
-            sitm(abort_tx(State, Sender, Txid))
+            sitm(abort_tx(State, Sender, Txid));
+        {writewv, Sender, Txid, OldValue, NewValue} ->
+            sitm(write_where_value(State, Sender, Txid, OldValue, NewValue))
     end,
     sitm(State).
 
@@ -255,6 +257,26 @@ abort_tx(State, Sender, Txid) ->
     UpdatedWRSets = orddict:erase(Txid, State#state.writereadsets),
     State#state{snapshots=UpdatedSnapshots, writereadsets=UpdatedWRSets}.
 
+% Implementing the write_where_value api
+% using the existing read/write apis
+
+write_multiple(State, _, _, [], _) ->
+    State;
+write_multiple(State, Sender, Txid, [Key], Value) ->
+    write(State, Sender, Txid, Key, Value);
+write_multiple(State, Sender, Txid, [Key|Remaining], Value) ->
+    write_multiple(write(State, Sender, Txid, Key, Value), Sender, Txid, Remaining, Value).
+
+% Algo:
+% 1. Search, using brute force, for all keys that have curr value OldValue.
+% 2. For each key, call write(key, newvalue)
+write_where_value(State, Sender, Txid, OldValue, NewValue) ->
+    % 1
+    Snapshot = orddict:fetch(Txid, State#state.snapshots),
+    KeysToUpdate = orddict:fetch_keys(orddict:filter(fun(_, V) -> V =:= OldValue end, Snapshot)),
+    % 2
+    write_multiple(State, Sender, Txid, KeysToUpdate, NewValue).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TM Tests
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -297,5 +319,7 @@ main_test_() ->
       %% fun tm:otv_tst/0,
       fun tm:p4_test/0,
       fun tm:g_single_test/0,
+      % this one fails legitimately
+      %% fun tm:g2_item_test/0,
       fun tm:start_tm_test/0
      ]}.

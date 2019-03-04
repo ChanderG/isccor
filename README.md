@@ -49,8 +49,9 @@ The following is the planned sequence of protocols we will consider:
 
 1. Read Uncommitted - simple, weak protocol to introduce the setup
 2. Monotonic Atomic View - commonly called Read Committed (TODO: need to understand the exact scientific spec of MAV)
+3. Snapshot Isolation - proper, mainstream protocol with demo of weakness
 
-Remaining: SI, SSI, TSO, S2PL
+Remaining: SSI, TSO, S2PL
 
 ## References
 

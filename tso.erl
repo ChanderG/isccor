@@ -32,7 +32,7 @@
 % 2. t > w -> true, {t, w}
 can_read(T, {R, W}) when T < W ->
     {false, {R, W}};
-can_read(T, {_, W}) when T > W ->
+can_read(T, {_, W}) when T >= W ->
     {true, {T, W}}.
 
 % Can the Tx with the timestamp T write the Object with ts O{r, w}?
@@ -64,9 +64,9 @@ tsotm(State)->
 	% Tx semantics
 	{begintx, Sender, Txid} ->
 	    tsotm(begin_tx(State, Sender, Txid));
-        {readtx, Sender, Txid, Key} ->
+        {read, Sender, Txid, Key} ->
             tsotm(read(State, Sender, Txid, Key));
-        {writetx, Sender, Txid, Key, Value} ->
+        {write, Sender, Txid, Key, Value} ->
             tsotm(write(State, Sender, Txid, Key, Value));
 	{committx, Sender, Txid} ->
 	    tsotm(commit_tx(State, Sender, Txid))
@@ -98,7 +98,13 @@ read(State, Sender, Txid, Key) ->
 	    Sender ! {readresp, State#state.name, cantread},
 	    State;
 	false ->
-	    read_(State, Sender, Txid, Key)
+            case orddict:is_key(Key, State#state.store) of
+                false ->
+                    Sender ! {readresp, State#state.name, invalid},
+                    State;
+                true ->
+                    read_(State, Sender, Txid, Key)
+            end
     end.
 
 read_(State, Sender, Txid, Key) ->
@@ -110,7 +116,13 @@ read_(State, Sender, Txid, Key) ->
 			{cantread, ObjTS, lists:append(Txid, State#state.aborts)}
 		end,
     Sender ! {readresp, State#state.name, Value},
-    State#state{timestamps=orddict:store(Key, UpdatedTS, State#state.timestamps), aborts=NewAborts}.
+    % if key does not actually exist, no need to set timestamp
+    case Value of
+        invalid ->
+            State#state{aborts=NewAborts};
+        _ ->
+            State#state{timestamps=orddict:store(Key, UpdatedTS, State#state.timestamps), aborts=NewAborts}
+    end.
 
 write(State, _, Txid, Key, Value) ->
     % tx already aborted
@@ -122,8 +134,17 @@ write(State, _, Txid, Key, Value) ->
 	    write_(State, Txid, Key, Value)
     end.
 
+% get object timestamp returning -1,-1 if object does not exist
+get_obj_ts(Ts, Key) ->
+    case orddict:is_key(Key, Ts) of
+        false ->
+            {-1, -1};
+        true ->
+            orddict:fetch(Key, Ts)
+    end.
+
 write_(State, Txid, Key, Value) ->
-    case can_write(orddict:fetch(Txid, State#state.txtimestamps), orddict:fetch(Key, State#state.timestamps)) of
+    case can_write(orddict:fetch(Txid, State#state.txtimestamps), get_obj_ts(State#state.timestamps, Key)) of
         {true, TS} ->
             % write value to store and update timestamp
             NewStore = orddict:store(Key, Value, State#state.store),
@@ -177,8 +198,8 @@ main_test_() ->
       % simple tx tests
       fun tm:tx_0_test/0,
       fun tm:tx_2_test/0,
-      %% fun tm:tx_3_test/0,
-      %% fun tm:tx_4_test/0,
+      fun tm:tx_3_test/0,
+      fun tm:tx_4_test/0,
       %% fun tm:tx_5_test/0,
       % test for anomalies
       % NA as w-w conflicts are neutralized
